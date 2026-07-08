@@ -77,3 +77,38 @@ class ChatResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     answer: str = Field(..., min_length=1, max_length=3000)
+
+class ExplanationOption(BaseModel):
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    optionNo: int = Field(..., ge=1, le=5)
+    optionContent: str = Field(..., min_length=1, max_length=800)
+
+    @field_validator('optionContent')
+    @classmethod
+    def validate_option_content(cls, value: str) -> str:
+        return normalize_user_text(value, max_length=800)
+
+
+class QuestionExplanationRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+    questionContent: str = Field(..., min_length=5, max_length=2000)
+    passage: str | None = Field(default=None, max_length=2000)
+    era: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, max_length=80)
+    options: list[ExplanationOption] = Field(..., min_length=1, max_length=5)
+    correctOptionId: int = Field(..., ge=1, le=5)
+    selectedOptionId: int | None = Field(default=None, ge=1, le=5)
+
+    @field_validator('questionContent')
+    @classmethod
+    def validate_question_content(cls, value: str) -> str:
+        return normalize_user_text(value, max_length=2000)
+
+    @field_validator('passage', 'era', 'category')
+    @classmethod
+    def validate_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return normalize_user_text(value, max_length=2000)

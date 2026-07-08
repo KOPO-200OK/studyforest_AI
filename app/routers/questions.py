@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends
 
 from app.core.config import Settings, get_settings
-from app.models.schemas import GenerateQuestionsRequest, GenerateQuestionsResponse
+from app.models.schemas import (
+    ChatResponse,
+    GenerateQuestionsRequest,
+    GenerateQuestionsResponse,
+    QuestionExplanationRequest,
+)
 from app.services.openai_service import OpenAIService
 
 router = APIRouter(prefix='/api/v1/questions', tags=['questions'])
@@ -17,3 +22,11 @@ def generate_questions(
     service: OpenAIService = Depends(get_openai_service),
 ) -> GenerateQuestionsResponse:
     return service.generate_questions(payload)
+
+
+@router.post('/explanation', response_model=ChatResponse)
+def explain_question(
+    payload: QuestionExplanationRequest,
+    service: OpenAIService = Depends(get_openai_service),
+) -> ChatResponse:
+    return service.explain_question(payload)
