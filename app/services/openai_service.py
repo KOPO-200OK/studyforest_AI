@@ -8,8 +8,8 @@ from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.core.exceptions import AppError
-from app.core.prompts import EXAM_QA_INSTRUCTIONS, MOTIVATION_INSTRUCTIONS, QUESTION_GENERATOR_INSTRUCTIONS
-from app.models.schemas import ChatResponse, ExamChatRequest, GenerateQuestionsRequest, GenerateQuestionsResponse, MotivationChatRequest
+from app.core.prompts import EXAM_QA_INSTRUCTIONS, MOTIVATION_INSTRUCTIONS, QUESTION_EXPLANATION_INSTRUCTIONS,QUESTION_GENERATOR_INSTRUCTIONS
+from app.models.schemas import ChatResponse, ExamChatRequest, GenerateQuestionsRequest, GenerateQuestionsResponse, MotivationChatRequest, QuestionExplanationRequest
 from app.services.safety import contains_prompt_injection
 
 logger = logging.getLogger(__name__)
@@ -192,3 +192,24 @@ class OpenAIService:
         if not output_text:
             raise AppError('AI 응답이 비어 있습니다. 다시 시도해 주세요.', status.HTTP_502_BAD_GATEWAY)
         return output_text
+
+        
+    def explain_question(self, request: QuestionExplanationRequest) -> ChatResponse:
+        options_text = '\n'.join(
+            [f'{option.optionNo}. {option.optionContent}' for option in request.options]
+        )
+
+        selected_text = f'{request.selectedOptionId}번' if request.selectedOptionId is not None else '선택 답안 없음'
+
+        prompt = (
+            f'[시대]\n{request.era or "미분류"}\n\n'
+            f'[분류]\n{request.category or "미분류"}\n\n'
+            f'[자료]\n{request.passage or "자료 없음"}\n\n'
+            f'[문제]\n{request.questionContent}\n\n'
+            f'[보기]\n{options_text}\n\n'
+            f'[사용자 선택]\n{selected_text}\n\n'
+            f'[정답]\n{request.correctOptionId}번'
+        )
+
+        text = self._call_openai_text(QUESTION_EXPLANATION_INSTRUCTIONS, prompt)
+        return ChatResponse(answer=text)
